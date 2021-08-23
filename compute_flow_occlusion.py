@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 ### custom lib
+import sys
+sys.path.append('./networks')
 import networks
 import utils
 
@@ -26,10 +28,11 @@ if __name__ == "__main__":
     ### testing options
     parser.add_argument('-model',           type=str,     default="FlowNet2",   help='Flow model name')
 
-    parser.add_argument('-dataset',         type=str,     required=True,        help='testing datasets')
     parser.add_argument('-phase',           type=str,     default="test",       choices=["train", "test"])
     parser.add_argument('-data_dir',        type=str,     default='data',       help='path to data folder')
+    parser.add_argument('-out_dir',        type=str,     default='data',       help='path to data folder')
     parser.add_argument('-list_dir',        type=str,     default='lists',      help='path to list folder')
+    parser.add_argument('-list_file',        type=str,        help='path to list folder')
     parser.add_argument('-gpu',             type=int,     default=0,            help='gpu device id')
     parser.add_argument('-cpu',             action='store_true',                help='use cpu?')
 
@@ -64,23 +67,24 @@ if __name__ == "__main__":
     model.eval()
 
     ### load image list
-    list_filename = os.path.join(opts.list_dir, "%s_%s.txt" %(opts.dataset, opts.phase))
+    list_filename = opts.list_file
     with open(list_filename) as f:
         video_list = [line.rstrip() for line in f.readlines()]
 
    
     for video in video_list:
 
-        frame_dir = os.path.join(opts.data_dir, opts.phase, "input", opts.dataset, video)
-        fw_flow_dir = os.path.join(opts.data_dir, opts.phase, "fw_flow", opts.dataset, video)
+        frame_dir = os.path.join(opts.data_dir,  video)
+        print(frame_dir)
+        fw_flow_dir = os.path.join(opts.out_dir, opts.phase, "fw_flow",  video)
         if not os.path.isdir(fw_flow_dir):
             os.makedirs(fw_flow_dir)
 
-        fw_occ_dir = os.path.join(opts.data_dir, opts.phase, "fw_occlusion", opts.dataset, video)
+        fw_occ_dir = os.path.join(opts.out_dir, opts.phase, "fw_occlusion",  video)
         if not os.path.isdir(fw_occ_dir):
             os.makedirs(fw_occ_dir)
 
-        fw_rgb_dir = os.path.join(opts.data_dir, opts.phase, "fw_flow_rgb", opts.dataset, video)
+        fw_rgb_dir = os.path.join(opts.out_dir, opts.phase, "fw_flow_rgb",  video)
         if not os.path.isdir(fw_rgb_dir):
             os.makedirs(fw_rgb_dir)
 
@@ -88,7 +92,7 @@ if __name__ == "__main__":
 
         for t in range(len(frame_list) - 1):
             
-            print("Compute flow on %s-%s frame %d" %(opts.dataset, opts.phase, t))
+            print("Compute flow on %s frame %d" %( opts.phase, t))
 
             ### load input images 
             img1 = utils.read_img(os.path.join(frame_dir, "%05d.jpg" %(t)))
@@ -142,7 +146,8 @@ if __name__ == "__main__":
             if not os.path.exists(output_filename):
                 flow_rgb = utils.flow_to_rgb(fw_flow)
                 utils.save_img(flow_rgb, output_filename)
-
+            # break
+        # break
 
 
 
