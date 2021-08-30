@@ -5,21 +5,39 @@ from torch.nn import init
 import math
 import numpy as np
 
-from resample2d_package.modules.resample2d import Resample2d
-from channelnorm_package.modules.channelnorm import ChannelNorm
+try:
+    from networks.resample2d_package.resample2d import Resample2d
+    from networks.channelnorm_package.channelnorm import ChannelNorm
 
-from .import FlowNetC
-from .import FlowNetS
-from .import FlowNetSD
-from .import FlowNetFusion
+    from networks import FlowNetC
+    from networks import FlowNetS
+    from networks import FlowNetSD
+    from networks import FlowNetFusion
 
-from submodules import *
+    from networks.submodules import *
+except:
+    from .networks.resample2d_package.resample2d import Resample2d
+    from .networks.channelnorm_package.channelnorm import ChannelNorm
+
+    from .networks import FlowNetC
+    from .networks import FlowNetS
+    from .networks import FlowNetSD
+    from .networks import FlowNetFusion
+
+    from .networks.submodules import *
 'Parameter count = 162,518,834'
+class MyDict(dict):
+    pass
 
 class FlowNet2(nn.Module):
 
-    def __init__(self, args, batchNorm=False, div_flow = 20., requires_grad=False):
+    def __init__(self, args=None, batchNorm=False, div_flow = 20.):
         super(FlowNet2,self).__init__()
+        if args is None:
+            args = MyDict()
+            args.rgb_max = 1
+            args.fp16 = False
+            args.grads = {}
         self.batchNorm = batchNorm
         self.div_flow = div_flow
         self.rgb_max = args.rgb_max
@@ -90,11 +108,6 @@ class FlowNet2(nn.Module):
                 init.xavier_uniform_(m.weight)
                 # init_deconv_bilinear(m.weight)
 
-        if not requires_grad:
-            for param in self.parameters():
-                param.requires_grad = False
-                
-
     def init_deconv_bilinear(self, weight):
         f_shape = weight.size()
         heigh, width = f_shape[-2], f_shape[-1]
@@ -112,14 +125,11 @@ class FlowNet2(nn.Module):
         return 
 
     def forward(self, img1, img2):
-
-        ### normaize input
         sz = img1.size()
         img1 = img1.view(sz[0], sz[1], 1, sz[2], sz[3] )
         img2 = img2.view(sz[0], sz[1], 1, sz[2], sz[3] )
 
         inputs = torch.cat((img1, img2), dim=2)
-
         rgb_mean = inputs.contiguous().view(inputs.size()[:2]+(-1,)).mean(dim=-1).view(inputs.size()[:2] + (1,1,1,))
         
         x = (inputs - rgb_mean) / self.rgb_max
@@ -157,12 +167,12 @@ class FlowNet2(nn.Module):
         norm_flownets2_flow = self.channelnorm(flownets2_flow)
 
         diff_flownets2_flow = self.resample4(x[:,3:,:,:], flownets2_flow)
-        #if not diff_flownets2_flow.volatile:
-        #    diff_flownets2_flow.register_hook(save_grad(self.args.grads, 'diff_flownets2_flow'))
+        # if not diff_flownets2_flow.volatile:
+        #     diff_flownets2_flow.register_hook(save_grad(self.args.grads, 'diff_flownets2_flow'))
 
         diff_flownets2_img1 = self.channelnorm((x[:,:3,:,:]-diff_flownets2_flow))
-        #if not diff_flownets2_img1.volatile:
-        #    diff_flownets2_img1.register_hook(save_grad(self.args.grads, 'diff_flownets2_img1'))
+        # if not diff_flownets2_img1.volatile:
+        #     diff_flownets2_img1.register_hook(save_grad(self.args.grads, 'diff_flownets2_img1'))
 
         # flownetsd
         flownetsd_flow2 = self.flownets_d(x)[0]
@@ -170,19 +180,19 @@ class FlowNet2(nn.Module):
         norm_flownetsd_flow = self.channelnorm(flownetsd_flow)
         
         diff_flownetsd_flow = self.resample3(x[:,3:,:,:], flownetsd_flow)
-        #if not diff_flownetsd_flow.volatile:
-        #    diff_flownetsd_flow.register_hook(save_grad(self.args.grads, 'diff_flownetsd_flow'))
+        # if not diff_flownetsd_flow.volatile:
+        #     diff_flownetsd_flow.register_hook(save_grad(self.args.grads, 'diff_flownetsd_flow'))
 
         diff_flownetsd_img1 = self.channelnorm((x[:,:3,:,:]-diff_flownetsd_flow))
-        #if not diff_flownetsd_img1.volatile:
-        #    diff_flownetsd_img1.register_hook(save_grad(self.args.grads, 'diff_flownetsd_img1'))
+        # if not diff_flownetsd_img1.volatile:
+        #     diff_flownetsd_img1.register_hook(save_grad(self.args.grads, 'diff_flownetsd_img1'))
 
         # concat img1 flownetsd, flownets2, norm_flownetsd, norm_flownets2, diff_flownetsd_img1, diff_flownets2_img1
         concat3 = torch.cat((x[:,:3,:,:], flownetsd_flow, flownets2_flow, norm_flownetsd_flow, norm_flownets2_flow, diff_flownetsd_img1, diff_flownets2_img1), dim=1)
         flownetfusion_flow = self.flownetfusion(concat3)
 
-        #if not flownetfusion_flow.volatile:
-        #    flownetfusion_flow.register_hook(save_grad(self.args.grads, 'flownetfusion_flow'))
+        # if not flownetfusion_flow.volatile:
+        #     flownetfusion_flow.register_hook(save_grad(self.args.grads, 'flownetfusion_flow'))
 
         return flownetfusion_flow
 
@@ -382,13 +392,13 @@ class FlowNet2CS(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 if m.bias is not None:
-                    init.uniform_(m.bias)
-                init.xavier_uniform_(m.weight)
+                    init.uniform(m.bias)
+                init.xavier_uniform(m.weight)
 
             if isinstance(m, nn.ConvTranspose2d):
                 if m.bias is not None:
-                    init.uniform_(m.bias)
-                init.xavier_uniform_(m.weight)
+                    init.uniform(m.bias)
+                init.xavier_uniform(m.weight)
                 # init_deconv_bilinear(m.weight)
 
     def forward(self, inputs):
@@ -459,13 +469,13 @@ class FlowNet2CSS(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 if m.bias is not None:
-                    init.uniform_(m.bias)
-                init.xavier_uniform_(m.weight)
+                    init.uniform(m.bias)
+                init.xavier_uniform(m.weight)
 
             if isinstance(m, nn.ConvTranspose2d):
                 if m.bias is not None:
-                    init.uniform_(m.bias)
-                init.xavier_uniform_(m.weight)
+                    init.uniform(m.bias)
+                init.xavier_uniform(m.weight)
                 # init_deconv_bilinear(m.weight)
 
     def forward(self, inputs):
@@ -505,4 +515,3 @@ class FlowNet2CSS(nn.Module):
         flownets2_flow = self.upsample3(flownets2_flow2 * self.div_flow)
 
         return flownets2_flow
-

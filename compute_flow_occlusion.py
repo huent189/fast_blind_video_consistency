@@ -18,7 +18,7 @@ import sys
 sys.path.append('./networks')
 import networks
 import utils
-
+from networks.FlowNet2 import FlowNet2
 
 
 if __name__ == "__main__":
@@ -54,7 +54,8 @@ if __name__ == "__main__":
     
     ### initialize FlowNet
     print('===> Initializing model from %s...' %opts.model)
-    model = networks.__dict__[opts.model](opts)
+    # model = networks.__dict__[opts.model](opts)
+    model = FlowNet2(opts)
 
     ### load pre-trained FlowNet
     model_filename = os.path.join("pretrained_models", "%s_checkpoint.pth.tar" %opts.model)
@@ -146,8 +147,8 @@ if __name__ == "__main__":
             if not os.path.exists(output_filename):
                 flow_rgb = utils.flow_to_rgb(fw_flow)
                 utils.save_img(flow_rgb, output_filename)
-            # break
-        # break
+            break
+        break
 
 
 

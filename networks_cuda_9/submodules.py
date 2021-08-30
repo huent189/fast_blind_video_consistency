@@ -73,20 +73,3 @@ def save_grad(grads, name):
     def hook(grad):
         grads[name] = grad
     return hook
-
-'''
-def save_grad(grads, name):
-    def hook(grad):
-        grads[name] = grad
-    return hook
-import torch
-from channelnorm_package.modules.channelnorm import ChannelNorm 
-model = ChannelNorm().cuda()
-grads = {}
-a = 100*torch.autograd.Variable(torch.randn((1,3,5,5)).cuda(), requires_grad=True)
-a.register_hook(save_grad(grads, 'a'))
-b = model(a)
-y = torch.mean(b)
-y.backward()
-
-'''

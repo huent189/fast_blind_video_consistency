@@ -5,9 +5,9 @@ from torch.nn import init
 import math
 import numpy as np
 
-from correlation_package.modules.correlation import Correlation
+from .correlation_package.correlation import Correlation
 
-from submodules import *
+from .submodules import *
 'Parameter count , 39,175,298 '
 
 class FlowNetC(nn.Module):
@@ -122,10 +122,7 @@ class FlowNetC(nn.Module):
 
         flow2 = self.predict_flow2(concat2)
 
-        
         if self.training:
-            return flow2,flow3,flow4,flow5,flow6,out_conv3_1,out_conv4,out_conv5,out_conv6
+            return flow2,flow3,flow4,flow5,flow6
         else:
             return flow2,
-        
-        return flow2,flow3,flow4,flow5,flow6
